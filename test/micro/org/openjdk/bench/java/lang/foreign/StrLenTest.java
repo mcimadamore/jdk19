@@ -44,7 +44,9 @@ import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
+import java.lang.foreign.StackArena;
 import java.lang.invoke.MethodHandle;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
@@ -58,6 +60,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 public class StrLenTest extends CLayouts {
 
     MemorySession session = MemorySession.openConfined();
+    StackArena stackArena = StackArena.newStack();
 
     SegmentAllocator segmentAllocator;
     SegmentAllocator arenaAllocator = SegmentAllocator.newNativeArena(session);
@@ -65,6 +68,7 @@ public class StrLenTest extends CLayouts {
     @Param({"5", "20", "100"})
     public int size;
     public String str;
+    public MemorySegment strSegment;
 
     static {
         System.loadLibrary("StrLen");
@@ -81,6 +85,7 @@ public class StrLenTest extends CLayouts {
     @Setup
     public void setup() {
         str = makeString(size);
+        strSegment = MemorySegment.ofArray(str.getBytes(StandardCharsets.UTF_8));
         segmentAllocator = SegmentAllocator.prefixAllocator(MemorySegment.allocateNative(size + 1, MemorySession.openConfined()));
     }
 
@@ -106,6 +111,22 @@ public class StrLenTest extends CLayouts {
     @Benchmark
     public int panama_strlen_arena() throws Throwable {
         return (int)STRLEN.invokeExact((Addressable)arenaAllocator.allocateUtf8String(str));
+    }
+
+    @Benchmark
+    public int panama_strlen_stack() throws Throwable {
+        try (var arena = stackArena.push()) {
+            return (int) STRLEN.invokeExact((Addressable)arena.allocateUtf8String(str));
+        }
+    }
+
+    @Benchmark
+    public int panama_strlen_stack_no_allocate_utf8() throws Throwable {
+        try (var arena = stackArena.push()) {
+            MemorySegment nativeString = arena.allocate(str.length() + 1);
+            MemorySegment.copy(strSegment, 0, nativeString, 0, str.length());
+            return (int) STRLEN.invokeExact((Addressable)nativeString);
+        }
     }
 
     @Benchmark

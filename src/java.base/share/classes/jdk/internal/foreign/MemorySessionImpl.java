@@ -178,6 +178,7 @@ public abstract non-sealed class MemorySessionImpl implements MemorySession, Seg
     }
 
     @Override
+    @ForceInline
     public MemorySession asNonCloseable() {
         return isCloseable() ?
                 new NonCloseableView(this) : this;
@@ -344,6 +345,7 @@ public abstract non-sealed class MemorySessionImpl implements MemorySession, Seg
     public final static class NonCloseableView implements MemorySession {
         final MemorySessionImpl session;
 
+        @ForceInline
         public NonCloseableView(MemorySessionImpl session) {
             this.session = session;
         }
