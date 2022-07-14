@@ -142,8 +142,9 @@ public class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl {
         return segment;
     }
 
+    @ForceInline
     public static MemorySegment makeNativeSegmentUnchecked(MemoryAddress min, long bytesSize, MemorySession session) {
-        MemorySessionImpl.toSessionImpl(session).checkValidState();
+        //MemorySessionImpl.toSessionImpl(session).checkValidState();
         AbstractMemorySegmentImpl segment = new NativeMemorySegmentImpl(min.toRawLongValue(), bytesSize, false, session);
         return segment;
     }

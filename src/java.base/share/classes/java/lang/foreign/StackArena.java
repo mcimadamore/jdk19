@@ -25,6 +25,7 @@
 
 package java.lang.foreign;
 
+import jdk.internal.foreign.NativeMemorySegmentImpl;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.vm.annotation.ForceInline;
 
@@ -82,30 +83,21 @@ import jdk.internal.vm.annotation.ForceInline;
  * the off-heap memory associated with the stack arena is released.
  */
 @PreviewFeature(feature=PreviewFeature.Feature.FOREIGN)
-public sealed class StackArena implements SegmentAllocator, AutoCloseable {
+public sealed class StackArena extends Arena {
 
     Block.Cursor currentBlock;
     final StackArena parent;
     boolean isTop = true;
-    final MemorySession session;
 
     /* package */ StackArena(StackArena parent) {
+        super(MemorySession.openConfined());
         this.parent = parent;
-        this.session = MemorySession.openConfined();
     }
 
     void checkTop() {
         if (!isTop) {
             throw new IllegalStateException();
         }
-    }
-
-    /**
-     * COmment
-     * @return comment
-     */
-    public MemorySession session() {
-        return session.asNonCloseable();
     }
 
     /**
@@ -130,7 +122,7 @@ public sealed class StackArena implements SegmentAllocator, AutoCloseable {
     @ForceInline
     public void close() {
         checkTop();
-        session.close();
+        super.close();
         if (parent != null) {
             parent.isTop = true;
         }
@@ -150,7 +142,8 @@ public sealed class StackArena implements SegmentAllocator, AutoCloseable {
     public MemorySegment allocate(long bytesSize, long bytesAlignment) {
         checkSizeAndAlign(bytesSize, bytesAlignment);
         checkTop();
-        return currentBlock.nextSlice(bytesSize, bytesAlignment, session);
+        MemoryAddress address = currentBlock.nextSlice(bytesSize, bytesAlignment);
+        return NativeMemorySegmentImpl.makeNativeSegmentUnchecked(address, bytesSize, session());
     }
 
     /**
@@ -193,7 +186,7 @@ public sealed class StackArena implements SegmentAllocator, AutoCloseable {
 
         public Root(long blockSize, long arenaSize) {
             super(null);
-            blocks = new Block(blockSize, arenaSize, session);
+            blocks = new Block(blockSize, arenaSize, session());
             currentBlock = blocks.start();
         }
     }

@@ -87,11 +87,11 @@ class Block {
             }
         }
 
-        MemorySegment nextSlice(long bytesSize, long bytesAlignment, MemorySession arena) {
+        MemoryAddress nextSlice(long bytesSize, long bytesAlignment) {
             // try to slice from current segment first...
             trySlice(bytesSize, bytesAlignment);
             if (offset != -1) {
-                return MemorySegment.ofAddress(block.segment.address().addOffset(offset), bytesSize, arena);
+                return block.segment.address().addOffset(offset);
             } else {
                 long maxPossibleAllocationSize = bytesSize + bytesAlignment - 1;
                 if (maxPossibleAllocationSize > block.blockSize) {
@@ -102,7 +102,7 @@ class Block {
                     block = block.nextOrAllocate();
                     offset = 0;
                     size = 0;
-                    return nextSlice(bytesSize, bytesAlignment, arena);
+                    return nextSlice(bytesSize, bytesAlignment);
                 }
             }
         }
