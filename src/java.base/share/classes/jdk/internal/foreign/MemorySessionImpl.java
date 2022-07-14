@@ -180,8 +180,7 @@ public abstract non-sealed class MemorySessionImpl implements MemorySession, Seg
     @Override
     @ForceInline
     public MemorySession asNonCloseable() {
-        return isCloseable() ?
-                new NonCloseableView(this) : this;
+        return new NonCloseableView(this);
     }
 
     @ForceInline
@@ -213,6 +212,7 @@ public abstract non-sealed class MemorySessionImpl implements MemorySession, Seg
      * @throws IllegalStateException if this session is already closed or if this is
      * a confined session and this method is called outside of the owner thread.
      */
+    @ForceInline
     public void checkValidState() {
         try {
             checkValidStateRaw();
